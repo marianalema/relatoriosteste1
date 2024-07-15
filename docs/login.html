@@ -7,10 +7,10 @@
     <style>
         @font-face {
             font-family: 'FontBold';
-            src: url("{{ url_for('static', filename='fonts/fontBold.otf') }}") format('opentype');
+            src: url("static/fonts/fontBold.otf") format('opentype');
         }
         body {
-            background-image: url("{{ url_for('static', filename='images/background.png') }}");
+            background-image: url("static/images/background.png");
             background-size: cover;
             color: #fa142d; /* Red color */
             font-family: 'FontBold', Arial, sans-serif;
@@ -76,7 +76,7 @@
     </style>
 </head>
 <body>
-    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo" class="logo">
+    <img src="static/images/logo.png" alt="Logo" class="logo">
     <h1>Sistema de Relatórios</h1>
     
     {% with messages = get_flashed_messages() %}
