@@ -12,7 +12,7 @@
         body {
             background-image: url("{{ url_for('static', filename='images/background.png') }}");
             background-size: cover;
-            color: #fa142d; /* Cor vermelha */
+            color: #fa142d; /* Red color */
             font-family: 'FontBold', Arial, sans-serif;
             max-width: 600px;
             margin: 20px auto;
@@ -51,7 +51,7 @@
         }
         button:hover {
             background-color: white;
-            color: #fa142d; /* Cor vermelha */
+            color: #fa142d; /* Red color */
         }
         h1 {
             text-align: center;
@@ -67,7 +67,7 @@
             width: 100%;
         }
         a {
-            color: white; /* Cor branca */
+            color: white; /* White color */
         }
         ul {
             list-style-type: none; /* Remove bullet points */
@@ -83,8 +83,8 @@
         {% if messages %}
             <ul>
                 {% for message in messages %}
-                    {% if message == "Esqueceu o login? " %}
-                        <li>{{ message }} <a href="mailto:dados@agenciacurta.com">Entrar em contato</a></li>
+                    {% if message == "Forgot your login? " %}
+                        <li>{{ message }} <a href="mailto:dados@agenciacurta.com">Contact us</a></li>
                     {% else %}
                         <li>{{ message }}</li>
                     {% endif %}
