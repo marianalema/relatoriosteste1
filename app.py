@@ -43,13 +43,25 @@ def login():
             flash('Invalid captcha. Please try again.')
             return redirect(url_for('login'))
 
-        user = User.query.filter_by(username=username).first()
+        # Debug print statements
+        print(f"Attempting login with username: {username}")
 
-        if user and user.password == password:
-            login_user(user)
-            return redirect(url_for('dashboard_view'))
+        try:
+            user = User.query.filter_by(username=username).first()
+        except Exception as e:
+            app.logger.error(f"Error querying the database: {e}")
+            flash('An error occurred while processing your request.')
+            return redirect(url_for('login'))
+
+        if user:
+            print(f"User found: {user.username}")
+            if user.password == password:
+                login_user(user)
+                return redirect(url_for('dashboard_view'))
+            else:
+                flash('Incorrect password.')
         else:
-            flash('Incorrect login details.')
+            flash('Username not found.')
 
     captcha_question, captcha_answer = generate_captcha()
     session['captcha_answer'] = captcha_answer
