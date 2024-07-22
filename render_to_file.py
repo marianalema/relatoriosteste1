@@ -9,9 +9,13 @@ def render_login():
     if not os.path.exists('docs'):
         os.makedirs('docs')
     
-    with open('docs/login.html', 'w') as file:
+    with open('/login.html', 'w') as file:
         file.write(rendered_html)
-    return 'Login page rendered to docs/login.html'
+    return 'Login page rendered to login.html'
+
+with open('/dashboard.html', 'w') as file:
+        file.write(rendered_html)
+    return 'Login page rendered to dashboard.html'
 
 if __name__ == '__main__':
     with app.app_context():
