@@ -1,11 +1,9 @@
 from flask import Flask, render_template, redirect, url_for, flash, request, session
-from flask_login import LoginManager, login_user, login_required, logout_user, current_user
+from flask_login import LoginManager, login_user, login_required, logout_user, current_user, UserMixin
 import os
 import csv
 import random
-from models import User
 import logging
-from sheets import get_google_sheets_data
 
 app = Flask(__name__)
 app.config.from_object('config.Config')
@@ -13,41 +11,38 @@ app.config.from_object('config.Config')
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
+# Define a User class to work with Flask-Login
+class User(UserMixin):
+    def __init__(self, username, password):
+        self.id = username
+        self.password = password
+
 @login_manager.user_loader
 def load_user(user_id):
-    # Since we're using CSV for login, we need to manually load the user
-    with open('usuarios.csv', newline='') as csvfile:
-        reader = csv.reader(csvfile)
-        next(reader)  # Skip the header row
-        for row in reader:
-            if row[0] == user_id:
-                return User(username=row[0], password=row[1])
+    users = initialize_users()
+    for user in users:
+        if user.id == user_id:
+            return user
     return None
 
-@app.route('/index')
-@app.route('/')
-def index():
-    return redirect(url_for('login'))
-
 def initialize_users():
+    users = []
     if not os.path.exists('usuarios.csv'):
         print("O arquivo usuarios.csv não foi encontrado.")
-        return
+        return users
 
     try:
         with open('usuarios.csv', newline='') as csvfile:
             reader = csv.reader(csvfile)
             next(reader)  # Skip the header row
-            users = []
             for row in reader:
                 if len(row) != 2:
                     print(f"Formato inválido na linha: {row}")
                     continue
                 users.append(User(username=row[0], password=row[1]))
-            return users
     except Exception as e:
         print(f"Erro ao ler o arquivo CSV: {e}")
-        return []
+    return users
 
 def generate_captcha():
     num1 = random.randint(1, 9)
@@ -69,13 +64,13 @@ def login():
             return redirect(url_for('login'))
 
         users = initialize_users()
-        user = next((u for u in users if u.username == username and u.password == password), None)
+        user = next((u for u in users if u.id == username and u.password == password), None)
 
         if user:
             login_user(user)
             return redirect(url_for('dashboard_view'))
         else:
-            flash('Esqueceu o login? ')
+            flash('Credenciais inválidas. Tente novamente.')
 
     # Gera uma nova conta para o captcha
     captcha_question, captcha_answer = generate_captcha()
@@ -95,7 +90,7 @@ def currency_format(value):
 @app.route('/dashboard')
 @login_required
 def dashboard_view():
-    email = current_user.username  # Assuming the username is the email
+    email = current_user.id  # Assuming the username is the email
     logging.debug(f"Email do usuário logado: {email}")
     influenciador, data, total_a_receber, total_recebido, picture = get_google_sheets_data(email)
     logging.debug(f"Influenciador: {influenciador}, Data passed to template: {data}, Total a Receber: {total_a_receber}, Total Recebido: {total_recebido}, Picture: {picture}")
