@@ -1,5 +1,6 @@
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+import logging
 
 def get_google_sheets_data(email):
     try:
@@ -7,7 +8,7 @@ def get_google_sheets_data(email):
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 
         # Add credentials to the account
-        creds = ServiceAccountCredentials.from_json_keyfile_name("client_secret_25408069079-1950nq3ke61reuafoqauccdr5lk1eeem.apps.googleusercontent.com", scope)
+        creds = ServiceAccountCredentials.from_json_keyfile_name("client_secret_25408069079-1950nq3ke61reuafoqauccdr5lk1eeem.apps.googleusercontent.com.json", scope)
 
         # Authorize the clientsheet 
         client = gspread.authorize(creds)
