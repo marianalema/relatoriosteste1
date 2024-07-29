@@ -6,8 +6,8 @@ import csv
 import random
 from models import db, User
 import config
-import mysql.connector
 import logging
+from sheets import get_google_sheets_data
 
 app = Flask(__name__)
 app.config.from_object(config.Config)
@@ -83,68 +83,6 @@ def login():
 
     return render_template('login.html', captcha_question=captcha_question)
 
-def get_faturamento_publicidade(email):
-    try:
-        connection = mysql.connector.connect(
-            host="database-1.cedwytewklqg.us-east-1.rds.amazonaws.com",
-            user="admin",
-            password="Curta123",
-            database="curta_analytics"
-        )
-        cursor = connection.cursor()
-        query = """
-        SELECT
-            reports.influenciador,
-            reports.data,
-            reports.marca,
-            reports.campanha,
-            reports.valor_influenciador,
-            reports.status_pgt_,
-            pic.picture
-        FROM
-            curta_analytics.reports_influ_beta2 AS reports
-        LEFT JOIN
-            curta_analytics.influenciadores_mkdigital_2024 AS pic
-        ON
-            reports.influenciador = pic.name
-        WHERE
-            reports.e_mail_influ = %s
-        LIMIT 100;
-        """
-        cursor.execute(query, (email,))
-        results = cursor.fetchall()
-        logging.debug(f"Number of records fetched: {len(results)}")
-        logging.debug(f"Data retrieved: {results}")
-        cursor.close()
-        connection.close()
-
-        if results:
-            influenciador = results[0][0]
-            picture = results[0][6]
-            data = [row[1:6] for row in results]
-            
-            total_a_receber = 0
-            total_recebido = 0
-            
-            for row in results:
-                valor = row[4].replace('R$', '').replace(',', '').strip()
-                valor_float = float(valor) if valor else 0.0
-                
-                if row[5] == "Aguardando":
-                    total_a_receber += valor_float
-                elif row[5] == "OK":
-                    total_recebido += valor_float
-
-            return influenciador, data, total_a_receber, total_recebido, picture
-        else:
-            return None, [], 0.0, 0.0, None
-
-    except mysql.connector.Error as err:
-        logging.error(f"Error: {err}")
-        return None, [], 0.0, 0.0, None
-
-
-
 @app.template_filter('currency_format')
 def currency_format(value):
     if isinstance(value, str):
@@ -154,18 +92,17 @@ def currency_format(value):
             return value  # In case the value is not a number, return it as is
     return f"R$ {value:,.2f}"
 
-
 @app.route('/dashboard')
 @login_required
 def dashboard_view():
     email = current_user.username  # Assuming the username is the email
     logging.debug(f"Email do usuário logado: {email}")
-    influenciador, data, total_a_receber, total_recebido, picture = get_faturamento_publicidade(email)
+    influenciador, data, total_a_receber, total_recebido, picture = get_google_sheets_data(email)
     logging.debug(f"Influenciador: {influenciador}, Data passed to template: {data}, Total a Receber: {total_a_receber}, Total Recebido: {total_recebido}, Picture: {picture}")
     
     # Prepare data for the chart
-    dates = [row[0] for row in data]
-    values = [float(row[3].replace('R$', '').replace(',', '').strip()) for row in data]
+    dates = [row['data'] for row in data]
+    values = [float(row['valor_influenciador'].replace('R$', '').replace(',', '').strip()) for row in data]
     
     return render_template('dashboard.html', user=current_user, influenciador=influenciador, data=data, total_a_receber=total_a_receber, total_recebido=total_recebido, picture=picture, dates=dates, values=values)
 
