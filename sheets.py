@@ -10,7 +10,7 @@ def get_google_sheets_data(email):
         # Add credentials to the account
         creds = ServiceAccountCredentials.from_json_keyfile_name("client_secret_25408069079-1950nq3ke61reuafoqauccdr5lk1eeem.apps.googleusercontent.com.json", scope)
 
-        # Authorize the clientsheet 
+        # Authorize the client
         client = gspread.authorize(creds)
 
         # Get the Base3 sheet
@@ -27,6 +27,7 @@ def get_google_sheets_data(email):
             picture = data[0]['picture']
             total_a_receber = sum(float(record['valor_influenciador'].replace('R$', '').replace(',', '').strip()) for record in data if record['status_pgt_'] == "Aguardando")
             total_recebido = sum(float(record['valor_influenciador'].replace('R$', '').replace(',', '').strip()) for record in data if record['status_pgt_'] == "OK")
+
             return influenciador, data, total_a_receber, total_recebido, picture
         else:
             return None, [], 0.0, 0.0, None
