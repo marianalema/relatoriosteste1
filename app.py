@@ -1,33 +1,33 @@
 from flask import Flask, render_template, redirect, url_for, flash, request, session
-from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 import os
 import csv
 import random
-from models import db, User
-import config
+from models import User
 import logging
 from sheets import get_google_sheets_data
 
 app = Flask(__name__)
-app.config.from_object(config.Config)
+app.config.from_object('config.Config')
 
-db.init_app(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    # Since we're using CSV for login, we need to manually load the user
+    with open('usuarios.csv', newline='') as csvfile:
+        reader = csv.reader(csvfile)
+        next(reader)  # Skip the header row
+        for row in reader:
+            if row[0] == user_id:
+                return User(username=row[0], password=row[1])
+    return None
 
 @app.route('/index')
 @app.route('/')
 def index():
     return redirect(url_for('login'))
-
-def reset_database():
-    db.drop_all()
-    db.create_all()
 
 def initialize_users():
     if not os.path.exists('usuarios.csv'):
@@ -38,17 +38,16 @@ def initialize_users():
         with open('usuarios.csv', newline='') as csvfile:
             reader = csv.reader(csvfile)
             next(reader)  # Skip the header row
+            users = []
             for row in reader:
                 if len(row) != 2:
                     print(f"Formato inválido na linha: {row}")
                     continue
-                username, password = row
-                if not User.query.filter_by(username=username).first():
-                    new_user = User(username=username, password=password)
-                    db.session.add(new_user)
-            db.session.commit()
+                users.append(User(username=row[0], password=row[1]))
+            return users
     except Exception as e:
         print(f"Erro ao ler o arquivo CSV: {e}")
+        return []
 
 def generate_captcha():
     num1 = random.randint(1, 9)
@@ -69,9 +68,10 @@ def login():
             flash('Captcha inválido. Tente novamente.')
             return redirect(url_for('login'))
 
-        user = User.query.filter_by(username=username).first()
+        users = initialize_users()
+        user = next((u for u in users if u.username == username and u.password == password), None)
 
-        if user and user.password == password:
+        if user:
             login_user(user)
             return redirect(url_for('dashboard_view'))
         else:
@@ -114,7 +114,4 @@ def logout():
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
-    with app.app_context():
-        reset_database()
-        initialize_users()
     app.run(debug=True)
