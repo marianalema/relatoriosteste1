@@ -4,6 +4,8 @@ import os
 import csv
 import random
 import logging
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
 app = Flask(__name__)
 app.config.from_object('config.Config')
@@ -87,18 +89,56 @@ def currency_format(value):
             return value  # In case the value is not a number, return it as is
     return f"R$ {value:,.2f}"
 
+def get_google_sheets_data(email):
+    try:
+        # Define the scope
+        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+
+        # Add credentials to the account
+        creds = ServiceAccountCredentials.from_json_keyfile_name("relatoriosTeste.json", scope)
+
+        # Authorize the client
+        client = gspread.authorize(creds)
+
+        # Get the Base3 sheet
+        sheet = client.open("relatorios teste").worksheet("Base3")
+
+        # Get all the records of the data
+        records = sheet.get_all_records()
+
+        # Filter data by email
+        data = [record for record in records if record['e_mail_influ'] == email]
+
+        if data:
+            influenciador = data[0]['influenciador']
+            picture = data[0]['picture']
+            total_a_receber = sum(float(record['valor_influenciador'].replace('R$', '').replace(',', '').strip()) for record in data if record['status_pgt_'] == "Aguardando")
+            total_recebido = sum(float(record['valor_influenciador'].replace('R$', '').replace(',', '').strip()) for record in data if record['status_pgt_'] == "OK")
+
+            return influenciador, data, total_a_receber, total_recebido, picture
+        else:
+            return None, [], 0.0, 0.0, None
+
+    except Exception as e:
+        logging.error(f"Error: {e}")
+        return None, [], 0.0, 0.0, None
+
 @app.route('/dashboard')
 @login_required
 def dashboard_view():
     email = current_user.id  # Assuming the username is the email
     logging.debug(f"Email do usuário logado: {email}")
+    
     influenciador, data, total_a_receber, total_recebido, picture = get_google_sheets_data(email)
     logging.debug(f"Influenciador: {influenciador}, Data passed to template: {data}, Total a Receber: {total_a_receber}, Total Recebido: {total_recebido}, Picture: {picture}")
     
-    # Prepare data for the chart
-    dates = [row['data'] for row in data]
-    values = [float(row['valor_influenciador'].replace('R$', '').replace(',', '').strip()) for row in data]
+    if not data:
+        logging.debug("No data available to display on the dashboard.")
     
+    # Prepare data for the chart
+    dates = [row.get('data') for row in data]
+    values = [safe_convert(row.get('valor_influenciador', '0')) for row in data]
+
     return render_template('dashboard.html', user=current_user, influenciador=influenciador, data=data, total_a_receber=total_a_receber, total_recebido=total_recebido, picture=picture, dates=dates, values=values)
 
 @app.route('/logout')
